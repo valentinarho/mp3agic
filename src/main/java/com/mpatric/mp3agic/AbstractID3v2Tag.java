@@ -45,6 +45,7 @@ public abstract class AbstractID3v2Tag implements ID3v2 {
 	public static final String ID_TRACK_OBSELETE = "TRK";
 	public static final String ID_PART_OF_SET_OBSELETE = "TPA";
 	public static final String ID_COMPILATION_OBSELETE = "TCP";
+    public static final String ID_TEXT_LYRICS = "USLT";
 	
 	protected static final String TAG = "ID3";
 	protected static final String FOOTER_TAG = "3DI";
@@ -558,6 +559,31 @@ public abstract class AbstractID3v2Tag implements ID3v2 {
 		return null;
 	}
 
+
+    /**
+     * Extracts the ID3v2 lyrics frame from the frame with tag name id
+     * @param id the tag name of the frame
+     * @return the ID3v2LyricsFrameData associated with the id
+     */
+    private ID3v2LyricsFrameData extractLyricsFrameData(String id) {
+        ID3v2FrameSet frameSet = frameSets.get(id);
+        if (frameSet != null) {
+            Iterator<ID3v2Frame> iterator = frameSet.getFrames().iterator();
+            while (iterator.hasNext()) {
+                ID3v2Frame frame = (ID3v2Frame) iterator.next();
+                ID3v2LyricsFrameData frameData;
+                try {
+                    frameData = new ID3v2LyricsFrameData(useFrameUnsynchronisation(), frame.getData());
+                    return frameData;
+                } catch (InvalidDataException e) {
+                    // Do nothing
+                }
+
+            }
+        }
+        return null;
+    }
+
 	
 	public String getComment() {
 		ID3v2CommentFrameData frameData;
@@ -871,7 +897,34 @@ public abstract class AbstractID3v2Tag implements ID3v2 {
 		return null;
 	}
 
-	public boolean equals(Object obj) {
+    /**
+     * Returns the lyrics tagged into the mp3 file
+     * @return the String lyrics, null otherwise.
+     */
+    public String getLyrics() {
+        ID3v2LyricsFrameData frameData;
+        if (getObseleteFormat()) return null;
+        else frameData = extractLyricsFrameData(ID_TEXT_LYRICS);
+
+        if (frameData != null && frameData.getLyrics() != null) return frameData.getLyrics().toString();
+
+        return null;
+    }
+
+    /**
+     * Set the lyrics into the USLT tag
+     * @param lyrics to tag in
+     */
+    public void setLyrics(String lyrics) {
+        if (lyrics != null && lyrics.length() > 0) {
+            invalidateDataLength();
+            ID3v2LyricsFrameData frameData = new ID3v2LyricsFrameData(useFrameUnsynchronisation(), "eng", null, null, new EncodedText(lyrics));
+            addFrame(createFrame(ID_TEXT_LYRICS, frameData.toBytes()), true);
+        }
+    }
+
+
+    public boolean equals(Object obj) {
 		if (! (obj instanceof AbstractID3v2Tag)) return false;
 		if (super.equals(obj)) return true;
 		AbstractID3v2Tag other = (AbstractID3v2Tag) obj;
